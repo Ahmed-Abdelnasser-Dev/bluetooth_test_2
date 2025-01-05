@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() => runApp(MyApp());
 
@@ -7,12 +8,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(
-          title: Text('Bluetooth Connection'),
-        ),
-        body: BluetoothConnector(),
-      ),
+      home: BluetoothConnector(),
     );
   }
 }
@@ -28,32 +24,149 @@ class _BluetoothConnectorState extends State<BluetoothConnector> {
   BluetoothDevice? connectedDevice;
   BluetoothCharacteristic? characteristic;
   String status = 'Idle';
-  String receivedData = '';
+  bool isSendingData = false;
+  List<String> receivedFiles = [];
 
   @override
   void initState() {
     super.initState();
   }
 
-  void startScan() {
-    setState(() {
-      status = 'Scanning for devices...';
-    });
-    FlutterBluePlus.startScan(timeout: Duration(seconds: 4)).catchError((e) {
+  // Navigate to the Received Files page
+  void navigateToReceivedFiles() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (context) =>
+              ReceivedFilesPage(receivedFiles: receivedFiles)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Bluetooth Connection'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            if (connectedDevice != null) ...[
+              Text(
+                'Connected Device: ${connectedDevice!.name}',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+            ],
+            Text(
+              'Status: $status',
+              style: TextStyle(
+                fontSize: 16,
+                color: status.contains('Error') ? Colors.red : Colors.green,
+              ),
+            ),
+            SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: connectedDevice == null ? startScan : null,
+                  icon: const Icon(Icons.bluetooth_searching),
+                  label: Text('Scan for Devices'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: connectedDevice != null ? disconnectDevice : null,
+                  icon: const Icon(Icons.bluetooth_disabled),
+                  label: const Text('Disconnect'),
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Found Devices',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: devices.length,
+                      itemBuilder: (context, index) {
+                        return ListTile(
+                          title: Text(devices[index].platformName),
+                          subtitle: Text(devices[index].id.toString()),
+                          onTap: () => pairDevice(devices[index]),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: null,
+                  icon: Icon(Icons.image),
+                  label: Text('Send Image'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: null,
+                  icon: Icon(Icons.attach_file),
+                  label: Text('Send File'),
+                ),
+              ],
+            ),
+            // Button to navigate to received files page
+            ElevatedButton(
+              onPressed: navigateToReceivedFiles,
+              child: Text('View Received Files'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void startScan() async {
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.bluetooth,
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.location,
+    ].request();
+
+    if (statuses[Permission.bluetooth]?.isGranted == true &&
+        statuses[Permission.bluetoothScan]?.isGranted == true &&
+        statuses[Permission.bluetoothConnect]?.isGranted == true &&
+        statuses[Permission.location]?.isGranted == true) {
       setState(() {
-        status = 'Error scanning for devices: $e';
+        status = 'Scanning for devices...';
       });
-    });
-    FlutterBluePlus.scanResults.listen((results) {
+
+      try {
+        await FlutterBluePlus.startScan(timeout: Duration(seconds: 4));
+        FlutterBluePlus.scanResults.listen((results) {
+          setState(() {
+            devices = results.map((r) => r.device).toList();
+            status = 'Scan complete. Found ${devices.length} devices.';
+          });
+        });
+      } catch (e) {
+        setState(() {
+          status = 'Error scanning for devices: $e';
+        });
+      }
+    } else {
       setState(() {
-        devices = results.map((r) => r.device).toList();
-        status = 'Scan complete. Found ${devices.length} devices.';
+        status = 'Permission(s) denied';
       });
-    }).onError((error) {
-      setState(() {
-        status = 'Error during scanning: $error';
-      });
-    });
+    }
   }
 
   void pairDevice(BluetoothDevice device) async {
@@ -117,110 +230,29 @@ class _BluetoothConnectorState extends State<BluetoothConnector> {
       }
     }
   }
+}
 
-  void sendData(String data) async {
-    if (characteristic != null) {
-      try {
-        await characteristic!.write(data.codeUnits);
-        setState(() {
-          status = 'Data sent: $data';
-        });
-      } catch (e) {
-        setState(() {
-          status = 'Error sending data: $e';
-        });
-      }
-    }
-  }
+class ReceivedFilesPage extends StatelessWidget {
+  final List<String> receivedFiles;
 
-  Future<void> receiveData() async {
-    if (characteristic != null) {
-      try {
-        var value = await characteristic!.read();
-        String receivedDataStr = String.fromCharCodes(value);
-        setState(() {
-          receivedData = receivedDataStr;
-          status = 'Data received: $receivedData';
-        });
-        print('Received data (string): $receivedDataStr');
-      } catch (e) {
-        setState(() {
-          status = 'Error receiving data: $e';
-        });
-        print('Error receiving data: $e');
-      }
-    }
-  }
+  ReceivedFilesPage({required this.receivedFiles});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          Text(
-            'Status: $status',
-            style: TextStyle(fontSize: 16, color: Colors.blue),
-          ),
-          SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              ElevatedButton(
-                onPressed: startScan,
-                child: Text('Scan for Devices'),
-              ),
-              if (connectedDevice != null)
-                ElevatedButton(
-                  onPressed: disconnectDevice,
-                  child: Text('Disconnect'),
-                ),
-            ],
-          ),
-          SizedBox(height: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Found Devices',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: devices.length,
-                    itemBuilder: (context, index) {
-                      return ListTile(
-                        title: Text(devices[index].name),
-                        subtitle: Text(devices[index].id.toString()),
-                        onTap: () => pairDevice(devices[index]),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Divider(),
-          if (connectedDevice != null) ...[
-            Text(
-              'Connected Device: ${connectedDevice!.name}',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            TextField(
-              decoration: InputDecoration(labelText: 'Send Data'),
-              onSubmitted: (text) => sendData(text),
-            ),
-            ElevatedButton(
-              onPressed: () => receiveData(),
-              child: Text('Receive Data'),
-            ),
-            Text(
-              'Received Data: $receivedData',
-              style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
-            ),
-          ],
-        ],
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Received Files'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ListView.builder(
+          itemCount: receivedFiles.length,
+          itemBuilder: (context, index) {
+            return ListTile(
+              title: Text(receivedFiles[index]),
+            );
+          },
+        ),
       ),
     );
   }

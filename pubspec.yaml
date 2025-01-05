@@ -11,6 +11,7 @@ dependencies:
     sdk: flutter
   flutter_blue_plus:
   permission_handler:
+  bluez: ^0.8.2
 
 dev_dependencies:
   flutter_test:

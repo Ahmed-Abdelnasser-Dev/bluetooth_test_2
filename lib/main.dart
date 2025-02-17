@@ -5,6 +5,8 @@ import 'package:permission_handler/permission_handler.dart';
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -14,6 +16,8 @@ class MyApp extends StatelessWidget {
 }
 
 class BluetoothConnector extends StatefulWidget {
+  const BluetoothConnector({super.key});
+
   @override
   _BluetoothConnectorState createState() => _BluetoothConnectorState();
 }
@@ -46,7 +50,7 @@ class _BluetoothConnectorState extends State<BluetoothConnector> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Bluetooth Connection'),
+        title: const Text('Bluetooth Connection'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -55,9 +59,10 @@ class _BluetoothConnectorState extends State<BluetoothConnector> {
             if (connectedDevice != null) ...[
               Text(
                 'Connected Device: ${connectedDevice!.name}',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
             ],
             Text(
               'Status: $status',
@@ -66,14 +71,14 @@ class _BluetoothConnectorState extends State<BluetoothConnector> {
                 color: status.contains('Error') ? Colors.red : Colors.green,
               ),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
                   onPressed: connectedDevice == null ? startScan : null,
                   icon: const Icon(Icons.bluetooth_searching),
-                  label: Text('Scan for Devices'),
+                  label: const Text('Scan for Devices'),
                 ),
                 ElevatedButton.icon(
                   onPressed: connectedDevice != null ? disconnectDevice : null,
@@ -82,7 +87,7 @@ class _BluetoothConnectorState extends State<BluetoothConnector> {
                 ),
               ],
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,26 +111,26 @@ class _BluetoothConnectorState extends State<BluetoothConnector> {
                 ],
               ),
             ),
-            Divider(),
+            const Divider(),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
                   onPressed: null,
-                  icon: Icon(Icons.image),
-                  label: Text('Send Image'),
+                  icon: const Icon(Icons.image),
+                  label: const Text('Send Image'),
                 ),
                 ElevatedButton.icon(
                   onPressed: null,
-                  icon: Icon(Icons.attach_file),
-                  label: Text('Send File'),
+                  icon: const Icon(Icons.attach_file),
+                  label: const Text('Send File'),
                 ),
               ],
             ),
             // Button to navigate to received files page
             ElevatedButton(
               onPressed: navigateToReceivedFiles,
-              child: Text('View Received Files'),
+              child: const Text('View Received Files'),
             ),
           ],
         ),
@@ -150,7 +155,7 @@ class _BluetoothConnectorState extends State<BluetoothConnector> {
       });
 
       try {
-        await FlutterBluePlus.startScan(timeout: Duration(seconds: 4));
+        await FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
         FlutterBluePlus.scanResults.listen((results) {
           setState(() {
             devices = results.map((r) => r.device).toList();
@@ -174,7 +179,7 @@ class _BluetoothConnectorState extends State<BluetoothConnector> {
       status = 'Pairing with ${device.name}...';
     });
     try {
-      await Future.delayed(Duration(seconds: 2));
+      await Future.delayed(const Duration(seconds: 2));
       setState(() {
         status = 'Paired with ${device.name}';
       });
@@ -198,15 +203,15 @@ class _BluetoothConnectorState extends State<BluetoothConnector> {
       });
 
       List<BluetoothService> services = await device.discoverServices();
-      services.forEach((service) {
-        service.characteristics.forEach((c) {
+      for (var service in services) {
+        for (var c in service.characteristics) {
           if (c.properties.write && c.properties.read) {
             setState(() {
               characteristic = c;
             });
           }
-        });
-      });
+        }
+      }
     } catch (e) {
       setState(() {
         status = 'Connection failed: $e';
@@ -235,13 +240,13 @@ class _BluetoothConnectorState extends State<BluetoothConnector> {
 class ReceivedFilesPage extends StatelessWidget {
   final List<String> receivedFiles;
 
-  ReceivedFilesPage({required this.receivedFiles});
+  const ReceivedFilesPage({super.key, required this.receivedFiles});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Received Files'),
+        title: const Text('Received Files'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

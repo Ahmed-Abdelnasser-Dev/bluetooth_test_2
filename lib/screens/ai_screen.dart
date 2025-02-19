@@ -19,7 +19,7 @@ class AIScreen extends StatefulWidget {
 class _AIScreenState extends State<AIScreen> {
   final TextEditingController _userMessage = TextEditingController();
 
-  static const apiKey = "AIzaSyA6LvS0mSXGN_fpqOkYVh6xEOcL7lid4Os";
+  static const apiKey = "AIzaSyDxnjV2umaxNgLS5VlUfvPtVFGdQ8ifyZg";
   final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
   final List<Message> _messages = [];
   final FlutterTts _flutterTts = FlutterTts();

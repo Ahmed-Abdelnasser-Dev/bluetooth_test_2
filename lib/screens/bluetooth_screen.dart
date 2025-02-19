@@ -129,10 +129,10 @@ class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
             ),
             ElevatedButton(
               onPressed: navigateToReceivedFiles,
-              child: const Text('View Received Files'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color.fromRGBO(16, 17, 40, 1),
               ),
+              child: const Text('View Received Files'),
             ),
           ],
         ),

@@ -12,6 +12,14 @@ dependencies:
   flutter_blue_plus:
   permission_handler: 
   flutter_svg:
+  http:
+  intl:
+  google_generative_ai:
+  flutter_tts:
+  speech_to_text:
+  hl_image_picker:
+  googleapis:
+  googleapis_auth:
 
 dev_dependencies:
   flutter_test:

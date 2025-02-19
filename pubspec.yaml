@@ -10,8 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_blue_plus:
-  permission_handler:
-  bluez: ^0.8.2
+  permission_handler: 
+  flutter_svg:
 
 dev_dependencies:
   flutter_test:
@@ -20,3 +20,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/imgs/

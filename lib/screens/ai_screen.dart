@@ -5,9 +5,6 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:hl_image_picker/hl_image_picker.dart';
 import 'dart:io';
-import 'dart:convert';
-import 'package:googleapis/vision/v1.dart' as vision;
-import 'package:googleapis_auth/auth_io.dart' show clientViaApiKey;
 
 class AIScreen extends StatefulWidget {
   const AIScreen({super.key});
@@ -19,8 +16,8 @@ class AIScreen extends StatefulWidget {
 class _AIScreenState extends State<AIScreen> {
   final TextEditingController _userMessage = TextEditingController();
 
-  static const apiKey = "AIzaSyDxnjV2umaxNgLS5VlUfvPtVFGdQ8ifyZg";
-  final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
+  static const apiKey = "AIzaSyASFYkkr43Sa4sPp9ynGtmbWkl-HM1Z6eM";
+  final model = GenerativeModel(model: 'gemini-2.0-flash', apiKey: apiKey);
   final List<Message> _messages = [];
   final FlutterTts _flutterTts = FlutterTts();
   final stt.SpeechToText _speech = stt.SpeechToText();
@@ -90,29 +87,17 @@ class _AIScreenState extends State<AIScreen> {
   }
 
   Future<String> _describeImage(File image) async {
-    final client = await clientViaApiKey(apiKey);
-    final visionApi = vision.VisionApi(client);
-
     final imageBytes = await image.readAsBytes();
-    final base64Image = base64Encode(imageBytes);
 
-    final request = vision.BatchAnnotateImagesRequest(
-      requests: [
-        vision.AnnotateImageRequest(
-          image: vision.Image(content: base64Image),
-          features: [vision.Feature(type: 'LABEL_DETECTION')],
-        ),
-      ],
-    );
+    final conversation = [
+      Content.multi([
+        TextPart("Describe this image in less than 400 characters."),
+        DataPart("image/jpeg", imageBytes),
+      ]),
+    ];
 
-    final response = await visionApi.images.annotate(request);
-    final labels = response.responses?.first.labelAnnotations;
-
-    if (labels != null && labels.isNotEmpty) {
-      return labels.map((label) => label.description).join(', ');
-    } else {
-      return "No recognizable objects found in the image.";
-    }
+    final response = await model.generateContent(conversation);
+    return response.text ?? "No description available.";
   }
 
   Future<void> _sendMessage() async {
@@ -187,8 +172,10 @@ class _AIScreenState extends State<AIScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color.fromRGBO(11, 12, 16, 1),
       appBar: AppBar(
         title: const Text('Talking AI'),
+        backgroundColor: const Color.fromRGBO(16, 17, 40, 1),
       ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.end,
@@ -242,11 +229,16 @@ class _AIScreenState extends State<AIScreen> {
                   child: TextFormField(
                     controller: _userMessage,
                     decoration: InputDecoration(
+                      filled: true,
+                      fillColor: const Color.fromRGBO(16, 17, 40, 1),
                       border: OutlineInputBorder(
                         borderSide: const BorderSide(color: Colors.deepOrange),
                         borderRadius: BorderRadius.circular(50),
                       ),
+                      hintText: 'Type your message...',
+                      hintStyle: const TextStyle(color: Colors.white70),
                     ),
+                    style: const TextStyle(color: Colors.white),
                   ),
                 ),
                 const Spacer(),

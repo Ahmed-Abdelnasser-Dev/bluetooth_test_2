@@ -42,14 +42,14 @@ class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
         backgroundColor: const Color.fromRGBO(16, 17, 40, 1),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
             if (connectedDevice != null) ...[
               Text(
                 'Connected Device: ${connectedDevice!.name}',
                 style: const TextStyle(
-                    fontSize: 18,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Colors.white),
               ),
@@ -58,11 +58,11 @@ class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
             Text(
               'Status: $status',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 18,
                 color: status.contains('Error') ? Colors.red : Colors.green,
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -70,21 +70,15 @@ class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
                   onPressed: connectedDevice == null ? startScan : null,
                   icon: const Icon(Icons.bluetooth_searching),
                   label: const Text('Scan'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromRGBO(16, 17, 40, 1),
-                  ),
                 ),
                 ElevatedButton.icon(
                   onPressed: connectedDevice != null ? disconnectDevice : null,
                   icon: const Icon(Icons.bluetooth_disabled),
                   label: const Text('Disconnect'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromRGBO(16, 17, 40, 1),
-                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,7 +86,7 @@ class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
                   const Text(
                     'Found Devices',
                     style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Colors.white),
                   ),
@@ -102,9 +96,11 @@ class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
                       itemBuilder: (context, index) {
                         return ListTile(
                           title: Text(devices[index].platformName,
-                              style: const TextStyle(color: Colors.white)),
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 16)),
                           subtitle: Text(devices[index].id.toString(),
-                              style: const TextStyle(color: Colors.white70)),
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 14)),
                           onTap: () => pairDevice(devices[index]),
                         );
                       },
@@ -121,17 +117,11 @@ class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
                   onPressed: connectedDevice != null ? sendFile : null,
                   icon: const Icon(Icons.attach_file),
                   label: const Text('Send File'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromRGBO(16, 17, 40, 1),
-                  ),
                 ),
               ],
             ),
             ElevatedButton(
               onPressed: navigateToReceivedFiles,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromRGBO(16, 17, 40, 1),
-              ),
               child: const Text('View Received Files'),
             ),
           ],

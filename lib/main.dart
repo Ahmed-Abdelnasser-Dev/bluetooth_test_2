@@ -17,16 +17,20 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color.fromRGBO(11, 12, 16, 1),
         appBarTheme: const AppBarTheme(
           backgroundColor: Color.fromRGBO(16, 17, 40, 1),
-          titleTextStyle: TextStyle(color: Colors.white, fontSize: 20),
+          titleTextStyle: TextStyle(
+              color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
         ),
         textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Colors.white),
-          bodyMedium: TextStyle(color: Colors.white70),
+          bodyLarge: TextStyle(color: Colors.white, fontSize: 18),
+          bodyMedium: TextStyle(color: Colors.white70, fontSize: 16),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             foregroundColor: Colors.white,
             backgroundColor: const Color.fromRGBO(16, 17, 40, 1),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+            textStyle:
+                const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),
       ),

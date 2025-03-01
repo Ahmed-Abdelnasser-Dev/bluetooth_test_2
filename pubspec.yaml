@@ -20,6 +20,8 @@ dependencies:
   hl_image_picker:
   googleapis:
   googleapis_auth:
+  bluetooth_classic:
+  path: 
 
 dev_dependencies:
   flutter_test:

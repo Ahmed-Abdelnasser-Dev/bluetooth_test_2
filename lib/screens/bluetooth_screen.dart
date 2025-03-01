@@ -1,36 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'dart:convert';
 
-class BluetoothConnectorScreen extends StatefulWidget {
-  const BluetoothConnectorScreen({super.key});
+class BluetoothPlusScreen extends StatefulWidget {
+  const BluetoothPlusScreen({super.key});
 
   @override
-  _BluetoothConnectorScreenState createState() =>
-      _BluetoothConnectorScreenState();
+  _BluetoothPlusScreenState createState() => _BluetoothPlusScreenState();
 }
 
-class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
-  FlutterBluePlus flutterBlue = FlutterBluePlus();
-  List<BluetoothDevice> devices = [];
-  BluetoothDevice? connectedDevice;
-  BluetoothCharacteristic? characteristic;
-  String status = 'Idle';
-  bool isSendingData = false;
-  List<String> receivedFiles = [];
+class _BluetoothPlusScreenState extends State<BluetoothPlusScreen> {
+  List<BluetoothDevice> _devicesList = [];
+  BluetoothDevice? _connectedDevice;
+  List<BluetoothService> _services = [];
+  String _status = 'Idle';
+  final Set<BluetoothDevice> _devices = {};
+  List<BluetoothCharacteristic> _writeCharacteristics = [];
+  BluetoothCharacteristic? _selectedCharacteristic;
 
   @override
   void initState() {
     super.initState();
-  }
-
-  void navigateToReceivedFiles() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ReceivedFilesPage(receivedFiles: receivedFiles),
-      ),
-    );
   }
 
   @override
@@ -45,21 +36,18 @@ class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            if (connectedDevice != null) ...[
+            if (_connectedDevice != null) ...[
               Text(
-                'Connected Device: ${connectedDevice!.name}',
-                style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white),
+                'Connected: ${_connectedDevice?.advName ?? 'Unknown'}',
+                style: const TextStyle(color: Colors.white, fontSize: 20),
               ),
               const SizedBox(height: 10),
             ],
             Text(
-              'Status: $status',
+              _status,
               style: TextStyle(
+                color: _status.contains('Error') ? Colors.red : Colors.green,
                 fontSize: 18,
-                color: status.contains('Error') ? Colors.red : Colors.green,
               ),
             ),
             const SizedBox(height: 20),
@@ -67,12 +55,12 @@ class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
-                  onPressed: connectedDevice == null ? startScan : null,
+                  onPressed: _connectedDevice == null ? _startScan : null,
                   icon: const Icon(Icons.bluetooth_searching),
                   label: const Text('Scan'),
                 ),
                 ElevatedButton.icon(
-                  onPressed: connectedDevice != null ? disconnectDevice : null,
+                  onPressed: _connectedDevice != null ? _disconnect : null,
                   icon: const Icon(Icons.bluetooth_disabled),
                   label: const Text('Disconnect'),
                 ),
@@ -84,24 +72,24 @@ class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Found Devices',
-                    style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white),
+                    'Discovered Devices',
+                    style: TextStyle(color: Colors.white, fontSize: 20),
                   ),
                   Expanded(
                     child: ListView.builder(
-                      itemCount: devices.length,
+                      itemCount: _devicesList.length,
                       itemBuilder: (context, index) {
+                        final device = _devicesList[index];
                         return ListTile(
-                          title: Text(devices[index].platformName,
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 16)),
-                          subtitle: Text(devices[index].id.toString(),
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 14)),
-                          onTap: () => pairDevice(devices[index]),
+                          title: Text(
+                            device.advName,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          subtitle: Text(
+                            device.remoteId.id,
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          onTap: () => _connectToDevice(device),
                         );
                       },
                     ),
@@ -114,15 +102,15 @@ class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
-                  onPressed: connectedDevice != null ? sendFile : null,
+                  onPressed: () => _sendText(),
                   icon: const Icon(Icons.attach_file),
                   label: const Text('Send File'),
                 ),
+                ElevatedButton(
+                  onPressed: () => _receiveData(),
+                  child: const Text('Receive Data'),
+                ),
               ],
-            ),
-            ElevatedButton(
-              onPressed: navigateToReceivedFiles,
-              child: const Text('View Received Files'),
             ),
           ],
         ),
@@ -130,132 +118,149 @@ class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
     );
   }
 
-  void startScan() async {
-    Map<Permission, PermissionStatus> statuses = await [
-      Permission.bluetooth,
-      Permission.bluetoothScan,
-      Permission.bluetoothConnect,
-      Permission.location,
-    ].request();
+  Future<void> _startScan() async {
+    try {
+      // Request necessary permissions
+      final status = await [
+        Permission.bluetoothScan,
+        Permission.bluetoothConnect,
+      ].request();
 
-    if (statuses[Permission.bluetooth]?.isGranted == true &&
-        statuses[Permission.bluetoothScan]?.isGranted == true &&
-        statuses[Permission.bluetoothConnect]?.isGranted == true &&
-        statuses[Permission.location]?.isGranted == true) {
-      setState(() => status = 'Scanning...');
+      if (status[Permission.bluetoothScan]!.isGranted &&
+          status[Permission.bluetoothConnect]!.isGranted) {
+        setState(() {
+          _status = 'Scanning...';
+          _devices.clear();
+          _devicesList.clear();
+        });
 
-      try {
-        await FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+        // Listen to scan results
         FlutterBluePlus.scanResults.listen((results) {
+          for (ScanResult result in results) {
+            if (result.device.advName.isNotEmpty) {
+              _devices.add(result.device);
+            }
+          }
           setState(() {
-            devices = results.map((r) => r.device).toList();
-            status = 'Scan complete. Found ${devices.length} devices.';
+            _devicesList = _devices.toList();
           });
         });
-      } catch (e) {
-        setState(() => status = 'Error scanning: $e');
+
+        await FlutterBluePlus.startScan();
+        await Future.delayed(const Duration(seconds: 16));
+        await FlutterBluePlus.stopScan();
+
+        setState(() {
+          _status = 'Found ${_devicesList.length} devices';
+        });
+      } else {
+        setState(() => _status = 'Permissions denied');
       }
-    } else {
-      setState(() => status = 'Permissions denied');
-    }
-  }
-
-  void pairDevice(BluetoothDevice device) async {
-    setState(() => status = 'Pairing with ${device.name}...');
-    try {
-      await Future.delayed(const Duration(seconds: 2));
-      setState(() => status = 'Paired with ${device.name}');
-      connectToDevice(device);
     } catch (e) {
-      setState(() => status = 'Pairing failed: $e');
+      setState(() => _status = 'Scan error: $e');
     }
   }
 
-  void connectToDevice(BluetoothDevice device) async {
-    setState(() => status = 'Connecting to ${device.name}...');
+  Future<void> _connectToDevice(BluetoothDevice device) async {
+    setState(() => _status = 'Connecting...');
     try {
       await device.connect();
       setState(() {
-        connectedDevice = device;
-        status = 'Connected to ${device.name}';
+        _connectedDevice = device;
+        _status = 'Connected to ${device.advName}';
       });
 
-      List<BluetoothService> services = await device.discoverServices();
-      for (var service in services) {
-        for (var c in service.characteristics) {
-          if (c.properties.write && c.properties.read) {
-            setState(() => characteristic = c);
+      // Discover services
+      _services = await device.discoverServices();
+
+      // Find all writable characteristics
+      _writeCharacteristics = [];
+      for (BluetoothService service in _services) {
+        for (BluetoothCharacteristic characteristic
+            in service.characteristics) {
+          if (characteristic.properties.write ||
+              characteristic.properties.writeWithoutResponse) {
+            _writeCharacteristics.add(characteristic);
           }
         }
       }
+
+      if (_writeCharacteristics.isEmpty) {
+        setState(() => _status = 'No writable characteristics found');
+        await device.disconnect();
+        return;
+      }
+
+      // Automatically select first writable characteristic
+      _selectedCharacteristic = _writeCharacteristics.first;
+
+      setState(() {
+        _status =
+            'Found ${_writeCharacteristics.length} writable characteristics';
+      });
     } catch (e) {
-      setState(() => status = 'Connection failed: $e');
+      setState(() => _status = 'Connection error: $e');
     }
   }
 
-  void disconnectDevice() async {
-    if (connectedDevice != null) {
+  Future<void> _disconnect() async {
+    if (_connectedDevice != null) {
+      setState(() => _status = 'Disconnecting...');
       try {
-        await connectedDevice!.disconnect();
+        await _connectedDevice!.disconnect();
         setState(() {
-          status = 'Disconnected from ${connectedDevice!.name}';
-          connectedDevice = null;
-          characteristic = null;
+          _connectedDevice = null;
+          _services.clear();
+          _status = 'Disconnected';
         });
       } catch (e) {
-        setState(() => status = 'Error disconnecting: $e');
+        setState(() => _status = 'Disconnect error: $e');
       }
     }
   }
 
-  void sendFile() async {
-    if (characteristic == null) {
-      setState(() => status = 'No writable characteristic found');
-      return;
-    }
-
-    setState(() {
-      status = 'Sending file...';
-      isSendingData = true;
-    });
-
-    try {
-      List<int> sampleData = [0x01, 0x02, 0x03, 0x04];
-      await characteristic!.write(sampleData);
-      setState(() {
-        status = 'File sent successfully!';
-        isSendingData = false;
-      });
-    } catch (e) {
-      setState(() {
-        status = 'Error sending file: $e';
-        isSendingData = false;
-      });
+  Future<void> _sendText() async {
+    if (_connectedDevice != null) {
+      try {
+        for (BluetoothService service in _services) {
+          for (BluetoothCharacteristic characteristic
+              in service.characteristics) {
+            if (characteristic.properties.write) {
+              await characteristic.write([0x12, 0x34]);
+              setState(() => _status = 'Text sent');
+              return;
+            }
+          }
+        }
+        setState(() => _status = 'No writable characteristic found');
+      } catch (e) {
+        setState(() => _status = 'Send error: $e');
+      }
+    } else {
+      setState(() => _status = 'No device connected');
     }
   }
-}
 
-class ReceivedFilesPage extends StatelessWidget {
-  final List<String> receivedFiles;
-
-  const ReceivedFilesPage({super.key, required this.receivedFiles});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color.fromRGBO(11, 12, 16, 1),
-      appBar: AppBar(
-        title: const Text('Received Files'),
-        backgroundColor: const Color.fromRGBO(16, 17, 40, 1),
-      ),
-      body: ListView(
-        children: receivedFiles
-            .map((file) => ListTile(
-                  title:
-                      Text(file, style: const TextStyle(color: Colors.white)),
-                ))
-            .toList(),
-      ),
-    );
+  Future<void> _receiveData() async {
+    if (_connectedDevice != null) {
+      try {
+        for (BluetoothService service in _services) {
+          for (BluetoothCharacteristic characteristic
+              in service.characteristics) {
+            if (characteristic.properties.read) {
+              List<int> value = await characteristic.read();
+              String receivedData = utf8.decode(value);
+              setState(() => _status = 'Received: $receivedData');
+              return;
+            }
+          }
+        }
+        setState(() => _status = 'No readable characteristic found');
+      } catch (e) {
+        setState(() => _status = 'Receive error: $e');
+      }
+    } else {
+      setState(() => _status = 'No device connected');
+    }
   }
 }

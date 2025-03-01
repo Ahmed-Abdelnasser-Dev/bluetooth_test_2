@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:bluetooth_test_2/screens/bluetooth_screen.dart';
 import 'package:bluetooth_test_2/screens/ai_screen.dart';
+import 'package:bluetooth_test_2/screens/bluetooth_connector_screen.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -11,13 +12,18 @@ class HomePage extends StatelessWidget {
     final List<Map<String, dynamic>> blocks = [
       {
         'image': 'assets/imgs/Camera Icon.svg',
-        'text': 'Bluetooth',
-        'page': const BluetoothConnectorScreen()
+        'text': 'Bluetooth Plus',
+        'page': const BluetoothPlusScreen()
       },
       {
         'image': 'assets/imgs/Translate Icon.svg',
         'text': 'AI Screen',
         'page': const AIScreen()
+      },
+      {
+        'image': 'assets/imgs/Translate Icon.svg',
+        'text': 'Bluetooth Classic',
+        'page': const BluetoothConnectorScreen()
       },
     ];
 

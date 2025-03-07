@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:bluetooth_test_2/screens/bluetooth_screen.dart';
 import 'package:bluetooth_test_2/screens/ai_screen.dart';
 import 'package:bluetooth_test_2/screens/bluetooth_connector_screen.dart';
+import 'package:bluetooth_test_2/screens/bluetooth_file_screen.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -25,6 +26,11 @@ class HomePage extends StatelessWidget {
         'text': 'Bluetooth Classic',
         'page': const BluetoothConnectorScreen()
       },
+      {
+        'image': 'assets/imgs/File Icon.svg',
+        'text': 'Bluetooth File',
+        'page': BluetoothFileScreen()
+      }
     ];
 
     return Scaffold(

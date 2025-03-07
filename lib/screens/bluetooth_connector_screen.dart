@@ -26,17 +26,6 @@ class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
   StreamSubscription<Uint8List>? _dataSubscription;
 
   final List<String> _uuids = [
-    // "0000110e-0000-1000-8000-00805f9b34fb", // A/V Remote Control Fail
-    // "0000111f-0000-1000-8000-00805f9b34fb", // Handsfree Audio Gateway
-    // "00001200-0000-1000-8000-00805f9b34fb", // PnP Information
-    // "0000110b-0000-1000-8000-00805f9b34fb", // Audio Sink
-    // "0000110a-0000-1000-8000-00805f9b34fb", // Audio Source
-    // "0000110c-0000-1000-8000-00805f9b34fb", // A/V Remote Control Target
-    // "00001800-0000-1000-8000-00805f9b34fb", // Generic Access Profile
-    // "00001801-0000-1000-8000-00805f9b34fb", // Generic Attribute Profile
-    // "0000180a-0000-1000-8000-00805f9b34fb", // Device Information
-    // "0000111e-0000-1000-8000-00805f9b34fb", // Handsfree
-
     "00001101-0000-1000-8000-00805f9b34fb", // New one
   ];
 
@@ -44,6 +33,7 @@ class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
   void initState() {
     super.initState();
     _initializeBluetooth();
+    _checkForConnectedDevice();
   }
 
   Future<void> _initializeBluetooth() async {
@@ -75,11 +65,24 @@ class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _dataSubscription?.cancel();
-    _textController.dispose();
-    super.dispose();
+  // New: Check for an already connected device when the screen opens.
+  Future<void> _checkForConnectedDevice() async {
+    try {
+      // Hypothetical method to get the currently connected device.
+      List<Device> devices = await _bluetoothClassic.getPairedDevices();
+      for (Device device in devices) {
+        if (device.name?.toLowerCase() == 'rasberrypi' ||
+            device.name?.toLowerCase() == 'raspberrypi') {
+          setState(() {
+            _connectedDevice = device;
+            _status = 'Connected to ${device.name}';
+          });
+          break;
+        }
+      }
+    } catch (e) {
+      print("Error checking for connected device: $e");
+    }
   }
 
   Future<void> _startScan() async {
@@ -175,6 +178,13 @@ class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
   }
 
   @override
+  void dispose() {
+    _dataSubscription?.cancel();
+    _textController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -249,6 +259,24 @@ class _BluetoothConnectorScreenState extends State<BluetoothConnectorScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// Dummy placeholder for the next screen.
+// Replace or modify with your actual next step screen.
+class NextStepScreen extends StatelessWidget {
+  const NextStepScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Next Step'),
+      ),
+      body: const Center(
+        child: Text('Device connected. Proceed with next step.'),
       ),
     );
   }

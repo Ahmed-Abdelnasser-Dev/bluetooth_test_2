@@ -22,6 +22,7 @@ class _BluetoothPlusScreenState extends State<BluetoothPlusScreen> {
   @override
   void initState() {
     super.initState();
+    _checkForConnectedDevices();
   }
 
   @override
@@ -86,7 +87,7 @@ class _BluetoothPlusScreenState extends State<BluetoothPlusScreen> {
                             style: const TextStyle(color: Colors.white),
                           ),
                           subtitle: Text(
-                            device.remoteId.id,
+                            device.remoteId.str,
                             style: const TextStyle(color: Colors.white70),
                           ),
                           onTap: () => _connectToDevice(device),
@@ -116,6 +117,42 @@ class _BluetoothPlusScreenState extends State<BluetoothPlusScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _checkForConnectedDevices() async {
+    try {
+      // Request necessary permissions
+      final status = await [
+        Permission.bluetoothScan,
+        Permission.bluetoothConnect,
+      ].request();
+
+      if (status[Permission.bluetoothScan]!.isGranted &&
+          status[Permission.bluetoothConnect]!.isGranted) {
+        setState(() {
+          _status = 'Checking for connected devices...';
+        });
+
+        // Get the list of connected devices
+        List<BluetoothDevice> connectedDevices =
+            await FlutterBluePlus.connectedDevices;
+
+        for (BluetoothDevice device in connectedDevices) {
+          if (device.advName == 'raspberrypi') {
+            _connectToDevice(device);
+            return;
+          }
+        }
+
+        setState(() {
+          _status = 'No connected devices found';
+        });
+      } else {
+        setState(() => _status = 'Permissions denied');
+      }
+    } catch (e) {
+      setState(() => _status = 'Error: $e');
+    }
   }
 
   Future<void> _startScan() async {
@@ -181,6 +218,13 @@ class _BluetoothPlusScreenState extends State<BluetoothPlusScreen> {
           if (characteristic.properties.write ||
               characteristic.properties.writeWithoutResponse) {
             _writeCharacteristics.add(characteristic);
+
+            if (characteristic.properties.notify) {
+              await characteristic.setNotifyValue(true);
+            } else {
+              print(
+                  "Characteristic ${characteristic.uuid} does not support notifications.");
+            }
           }
         }
       }
@@ -190,7 +234,6 @@ class _BluetoothPlusScreenState extends State<BluetoothPlusScreen> {
         await device.disconnect();
         return;
       }
-
       // Automatically select first writable characteristic
       _selectedCharacteristic = _writeCharacteristics.first;
 
@@ -221,18 +264,20 @@ class _BluetoothPlusScreenState extends State<BluetoothPlusScreen> {
 
   Future<void> _sendText() async {
     if (_connectedDevice != null) {
+      bool sent = false;
       try {
-        for (BluetoothService service in _services) {
-          for (BluetoothCharacteristic characteristic
-              in service.characteristics) {
-            if (characteristic.properties.write) {
-              await characteristic.write([0x12, 0x34]);
-              setState(() => _status = 'Text sent');
-              return;
-            }
-          }
+        for (BluetoothCharacteristic characteristic in _writeCharacteristics) {
+          await characteristic.write(utf8.encode("hello World"),
+              allowLongWrite: true);
+          sent = true;
+          break;
         }
-        setState(() => _status = 'No writable characteristic found');
+        if (sent) {
+          setState(() => _status = 'Text sent');
+        } else {
+          setState(
+              () => _status = 'No writable characteristic could send the data');
+        }
       } catch (e) {
         setState(() => _status = 'Send error: $e');
       }
